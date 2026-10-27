@@ -365,7 +365,7 @@ async function createTicket(interaction, type) {
         content:
           '<@' + user.id + '>\n\n' +
           '⠀⠀⠀⠀✿⠀ ―⠀ __n__e**w**⠀⠀–⠀⠀**or**d__er__！\n' +
-          '⠀⠀⠀⠀⠀ ୭⠀⠀__p__le**as**e⠀⠀ch**oos**e⠀◞',
+          '⠀⠀⠀⠀⠀ ୭⠀⠀__p__le**as**e⠀⠀ch**oos**e⠀◞'\n\n,
 
         components: [buttons],
         allowedMentions: { users: [user.id] }
@@ -375,7 +375,7 @@ async function createTicket(interaction, type) {
         content:
           '<@' + user.id + '>\n\n' +
           '⠀⠀⠀⠀✿⠀  ―⠀ **ge**t **s**upport⠀–⠀he**re**！\n' +
-          '⠀⠀⠀⠀⠀ ୭⠀⠀ple**as**e⠀⠀**be** patient⠀◞',
+          '⠀⠀⠀⠀⠀ ୭⠀⠀ple**as**e⠀⠀**be** patient⠀◞\n\n',
 
         allowedMentions: { users: [user.id] }
       });
@@ -413,9 +413,9 @@ function makeFormModal(kind) {
 
     const fields = [
       ['item', 'item', 'item you are buying', true],
-      ['amount', 'amount', 'how many', true],
-      ['mop', 'mop', 'mop you are paying with', true],
-      ['tip', 'tip', 'tip amount, if any', false],
+      ['amount', 'amount', 'e.g. 2x', true],
+      ['mop', 'mop', 'e.g. pp usd', true],
+      ['tip', 'tip', 'optional, if any', false],
       ['info', 'info', 'any extra information', false]
     ];
 
@@ -438,12 +438,12 @@ function makeFormModal(kind) {
 
   const modal = new ModalBuilder()
     .setCustomId('form_warranty')
-    .setTitle('warranty form');
+    .setTitle('__war__ra**nt**y __fo__rm');
 
   const fields = [
     ['ticket_id', 'ticket id', 'enter ticket id sent in dms', true],
-    ['item', 'Item', 'item you are wanting a warranty for', true],
-    ['issue', 'Issue', 'explain the issue', true]
+    ['item', 'item', 'item you are wanting a warranty for', true],
+    ['issue', 'issue', 'explain the issue', true]
   ];
 
   for (const field of fields) {
