@@ -221,7 +221,7 @@ async function registerCommands() {
     closeCommand.data,
     new SlashCommandBuilder()
       .setName('allmops')
-      .setDescription('Vview available mops'),
+      .setDescription('view available mops'),
     calculateCommand.data
   ].map(command => command.toJSON());
 
