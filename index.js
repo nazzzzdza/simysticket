@@ -147,14 +147,12 @@ function makePanel() {
       {
         label: '⠀ .   .   .⠀buy',
         description: 'buy⠀from⠀us',
-        value: 'ORD',
-        emoji: '✿'
+        value: 'ORD'
       },
       {
         label: '⠀ .   .   .⠀support',
         description: 'get⠀support',
-        value: 'SUP',
-        emoji: '✿'
+        value: 'SUP'
       }
     );
 
