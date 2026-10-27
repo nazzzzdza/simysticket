@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 
 const express = require('express');
@@ -41,15 +42,13 @@ const TRANSCRIPT_CHANNEL_ID = '1529196050450087966';
 const STAFF_ROLE_ID = '1055309415806406766';
 
 const CONFIRM_COLOR = 0x8b5cf6;
-const FEE_PERCENT = 2;
 
-// Add your MOPs and instructions here later.
+// /allmops stays here until its updated version is ready.
 const MOPS = [
-  // Example:
-  // { name: 'PayPal', instructions: 'Add your instructions here.' }
+  // Add the MOP details here later.
 ];
 
-// ========================================================
+// ==================== ENVIRONMENT ====================
 
 if (
   !DISCORD_TOKEN ||
@@ -79,11 +78,12 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-// Render web service keepalive
+// ==================== RENDER KEEPALIVE ====================
+
 const app = express();
 
 app.get('/', (_req, res) => {
-  res.status(200).send('Simys ticket bot is online.');
+  res.status(200).send('simys ticket bot is online.');
 });
 
 app.get('/health', (_req, res) => {
@@ -96,10 +96,9 @@ app.listen(port, '0.0.0.0', () => {
   console.log('Web server listening on port ' + port);
 });
 
-// Active tickets are restored from Supabase on startup.
-const activeTickets = new Map();
+// ==================== TICKETS ====================
 
-// ==================== GENERAL HELPERS ====================
+const activeTickets = new Map();
 
 function isStaff(member) {
   return Boolean(
@@ -143,17 +142,17 @@ function confirmationEmbed(title, description) {
 function makePanel() {
   const menu = new StringSelectMenuBuilder()
     .setCustomId('ticket_create')
-    .setPlaceholder('Choose a ticket type')
+    .setPlaceholder('⠀ .   .   .⠀select⠀one⠀below')
     .addOptions(
       {
-        label: 'Ordering',
-        description: 'Create an ordering ticket',
+        label: '⠀ .   .   .⠀buy',
+        description: 'buy⠀from⠀us',
         value: 'ORD',
-        emoji: '🛒'
+        emoji: '✿'
       },
       {
-        label: 'Support',
-        description: 'Get help from staff',
+        label: '⠀ .   .   .⠀support',
+        description: 'get⠀support',
         value: 'SUP',
         emoji: '✿'
       }
@@ -161,8 +160,8 @@ function makePanel() {
 
   return {
     content:
-      '✿ **SIMYS TICKETS**\n' +
-      'Choose the type of ticket you want to open below.',
+      '✿ **simys tickets**\n' +
+      'choose the type of ticket you want to open below ! ',
     components: [
       new ActionRowBuilder().addComponents(menu)
     ]
@@ -182,7 +181,7 @@ async function getTicketForChannel(channelId) {
     .maybeSingle();
 
   if (error) {
-    console.error('Could not load ticket:', error.message);
+    console.error('could not load ticket:', error.message);
     return null;
   }
 
@@ -212,42 +211,20 @@ async function updateTicketRow(channelId, updates) {
   return data;
 }
 
-// ==================== SLASH COMMANDS ====================
+// ==================== SLASH COMMAND REGISTRATION ====================
 
 async function registerCommands() {
+  const ticketpanelCommand = require('./commands/ticketpanel');
+  const closeCommand = require('./commands/close');
+  const calculateCommand = require('./commands/calculate');
+
   const commands = [
-    new SlashCommandBuilder()
-      .setName('ticketpanel')
-      .setDescription('Post the ticket panel.'),
-
-    new SlashCommandBuilder()
-      .setName('close')
-      .setDescription('Ask to close this ticket.'),
-
+    ticketpanelCommand.data,
+    closeCommand.data,
     new SlashCommandBuilder()
       .setName('allmops')
-      .setDescription('View available methods of payment.'),
-
-    new SlashCommandBuilder()
-      .setName('calculate')
-      .setDescription('Calculate a fee and total.')
-      .addNumberOption(option =>
-        option
-          .setName('amount')
-          .setDescription('Amount to calculate')
-          .setRequired(true)
-          .setMinValue(0.01)
-      )
-      .addStringOption(option =>
-        option
-          .setName('currency')
-          .setDescription('Currency of the amount')
-          .setRequired(false)
-          .addChoices(
-            { name: 'EUR (€)', value: 'EUR' },
-            { name: 'USD ($)', value: 'USD' }
-          )
-      )
+      .setDescription('Vview available mops'),
+    calculateCommand.data
   ].map(command => command.toJSON());
 
   const rest = new REST({ version: '10' })
@@ -258,7 +235,7 @@ async function registerCommands() {
     { body: commands }
   );
 
-  console.log('Registered slash commands.');
+  console.log('registered slash commands');
 }
 
 // ==================== CREATE TICKETS ====================
@@ -273,14 +250,12 @@ async function createTicket(interaction, type) {
       : SUPPORT_CATEGORY_ID;
 
   const displayName =
-    interaction.member &&
-    interaction.member.displayName
+    interaction.member && interaction.member.displayName
       ? interaction.member.displayName
       : user.username;
 
   await interaction.deferReply({ ephemeral: true });
 
-  // The SQL function allocates a permanent, sequential number.
   const { data: number, error: numberError } =
     await supabase.rpc('next_ticket_number', {
       p_ticket_type: type
@@ -292,12 +267,12 @@ async function createTicket(interaction, type) {
     number === undefined
   ) {
     console.error(
-      'Ticket number allocation failed:',
+      'ticket number allocation failed:',
       numberError && numberError.message
     );
 
     await interaction.editReply(
-      'I could not allocate a ticket number. Please tell staff.'
+      'could not allocate a ticket number, please tell staff.'
     );
 
     return;
@@ -314,7 +289,7 @@ async function createTicket(interaction, type) {
 
       topic:
         ticketId +
-        ' | Opened by ' +
+        ' | opened by ' +
         user.tag +
         ' (' +
         user.id +
@@ -379,12 +354,12 @@ async function createTicket(interaction, type) {
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('order_continue')
-          .setLabel('Continue')
+          .setLabel('continue')
           .setStyle(ButtonStyle.Secondary),
 
         new ButtonBuilder()
           .setCustomId('ticket_cancel')
-          .setLabel('Cancel')
+          .setLabel('cancel')
           .setStyle(ButtonStyle.Danger)
       );
 
@@ -415,16 +390,16 @@ async function createTicket(interaction, type) {
       channel.toString()
     );
   } catch (error) {
-    console.error('Ticket creation failed:', error);
+    console.error('ticket creation failed:', error);
 
     if (channel) {
       try {
-        await channel.delete('Ticket setup failed');
+        await channel.delete('ticket setup failed');
       } catch (_) {}
     }
 
     await interaction.editReply(
-      'Something went wrong creating your ticket. Please tell staff. Error: ' +
+      'something went wrong creating your ticket, please tell staff Error: ' +
       String(error.message || error).slice(0, 200)
     );
   }
@@ -436,14 +411,14 @@ function makeFormModal(kind) {
   if (kind === 'order') {
     const modal = new ModalBuilder()
       .setCustomId('form_order')
-      .setTitle('Order form');
+      .setTitle('order form');
 
     const fields = [
-      ['item', 'Item', 'What item are you ordering?', true],
-      ['amount', 'Amount', 'How many?', true],
-      ['mop', 'MOP', 'Your method of payment', true],
-      ['tip', 'Tip', 'Tip amount, if any', false],
-      ['info', 'Info', 'Any extra information', false]
+      ['item', 'item', 'item you are buying', true],
+      ['amount', 'amount', 'how many', true],
+      ['mop', 'mop', 'mop you are paying with', true],
+      ['tip', 'tip', 'tip amount, if any', false],
+      ['info', 'info', 'any extra information', false]
     ];
 
     for (const field of fields) {
@@ -465,12 +440,12 @@ function makeFormModal(kind) {
 
   const modal = new ModalBuilder()
     .setCustomId('form_warranty')
-    .setTitle('Warranty form');
+    .setTitle('warranty form');
 
   const fields = [
-    ['ticket_id', 'Ticket ID', 'Enter the ticket ID', true],
-    ['item', 'Item', 'Which item is this about?', true],
-    ['issue', 'Issue', 'Explain the issue', true]
+    ['ticket_id', 'ticket id', 'enter ticket id sent in dms', true],
+    ['item', 'Item', 'item you are wanting a warranty for', true],
+    ['issue', 'Issue', 'explain the issue', true]
   ];
 
   for (const field of fields) {
@@ -588,9 +563,9 @@ async function createTranscript(channel, ticket) {
     '<div class="muted">' +
     'Type: ' +
     escapeHtml(ticket.ticket_type === 'ORD' ? 'Ordering' : 'Support') +
-    ' · Channel: ' + escapeHtml(channel.name) +
-    ' · Opener ID: ' + escapeHtml(ticket.user_id) +
-    ' · Messages: ' + messages.length +
+    ' · channel: ' + escapeHtml(channel.name) +
+    ' · opener id: ' + escapeHtml(ticket.user_id) +
+    ' · messages: ' + messages.length +
     '</div></header>' +
     messageHtml +
     '</body></html>';
@@ -624,7 +599,6 @@ async function sendTranscript(channel, ticket) {
 }
 
 async function finishTicket(channel, ticket, sendDM) {
-  // Save the transcript first. If this fails, leave the ticket open.
   await sendTranscript(channel, ticket);
 
   if (sendDM) {
@@ -632,13 +606,13 @@ async function finishTicket(channel, ticket, sendDM) {
       const opener = await client.users.fetch(ticket.user_id);
 
       await opener.send(
-        'Your ticket **' +
+        'your ticket **' +
         ticket.ticket_id +
-        '** has been closed by staff. Thank you!'
+        '** has been closed by staff, thank you!'
       );
     } catch (error) {
       console.warn(
-        'Could not DM opener for ' + ticket.ticket_id + ':',
+        'could not dm opener for ' + ticket.ticket_id + ':',
         error.message
       );
     }
@@ -661,7 +635,7 @@ async function showCancelConfirmation(interaction) {
 
   if (!ticket) {
     await interaction.reply({
-      content: 'This channel is not an open ticket.',
+      content: 'this channel is not an open ticket',
       ephemeral: true
     });
     return;
@@ -673,7 +647,7 @@ async function showCancelConfirmation(interaction) {
 
   if (!openerOrStaff) {
     await interaction.reply({
-      content: 'Only the ticket opener or staff can cancel this ticket.',
+      content: 'only the ticket opener or staff can cancel this ticket',
       ephemeral: true
     });
     return;
@@ -682,20 +656,20 @@ async function showCancelConfirmation(interaction) {
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('cancel_confirm:' + interaction.channelId)
-      .setLabel('Yes, cancel ticket')
+      .setLabel('cancel ticket')
       .setStyle(ButtonStyle.Danger),
 
     new ButtonBuilder()
       .setCustomId('cancel_abort:' + interaction.channelId)
-      .setLabel('Keep ticket')
+      .setLabel('keep ticket')
       .setStyle(ButtonStyle.Secondary)
   );
 
   await interaction.reply({
     embeds: [
       confirmationEmbed(
-        'Cancel this ticket?',
-        'This will save a transcript and permanently delete this ticket channel. This cannot be undone.'
+        'cancel this ticket?',
+        'this will save a transcript and permanently delete this ticket channel'
       )
     ],
     components: [row]
@@ -707,7 +681,7 @@ async function showCloseConfirmation(interaction) {
 
   if (!ticket) {
     await interaction.reply({
-      content: 'Use /close inside an open ticket channel.',
+      content: 'use /close inside an open ticket channel',
       ephemeral: true
     });
     return;
@@ -715,7 +689,7 @@ async function showCloseConfirmation(interaction) {
 
   if (!isStaff(interaction.member)) {
     await interaction.reply({
-      content: 'Only staff can close tickets with /close.',
+      content: 'only staff can close tickets with /close',
       ephemeral: true
     });
     return;
@@ -724,12 +698,12 @@ async function showCloseConfirmation(interaction) {
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('close_confirm:' + interaction.channelId)
-      .setLabel('Confirm close')
+      .setLabel('confirm close')
       .setStyle(ButtonStyle.Danger),
 
     new ButtonBuilder()
       .setCustomId('close_abort:' + interaction.channelId)
-      .setLabel('Keep open')
+      .setLabel('keep open')
       .setStyle(ButtonStyle.Secondary)
   );
 
@@ -737,7 +711,7 @@ async function showCloseConfirmation(interaction) {
     embeds: [
       confirmationEmbed(
         'Close ' + ticket.ticket_id + '?',
-        'Confirming will create an HTML transcript, DM the ticket ID to the opener, and then delete this channel.'
+        'confirming will create an HTML transcript, dm the ticket id to the opener, and then delete this channel.'
       )
     ],
     components: [row]
@@ -775,13 +749,13 @@ function makeMopsPayload(page) {
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('mop_page:' + (safePage - 1))
-          .setLabel('Previous')
+          .setLabel('previous')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(safePage === 0),
 
         new ButtonBuilder()
           .setCustomId('mop_page:' + (safePage + 1))
-          .setLabel('Next')
+          .setLabel('next')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(safePage === pageCount - 1)
       )
@@ -790,8 +764,8 @@ function makeMopsPayload(page) {
 
   return {
     content:
-      '✿ **AVAILABLE METHODS OF PAYMENT**\n' +
-      'Choose a method below to see its instructions.\n' +
+      '✿ **available mops**\n' +
+      'choose a method below to see its instructions.\n' +
       'Page ' + (safePage + 1) + ' of ' + pageCount + '.',
     components: rows
   };
@@ -855,89 +829,41 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async interaction => {
   try {
-    // Slash commands
+    // Commands that have their own files.
     if (interaction.isChatInputCommand()) {
-      if (interaction.commandName === 'ticketpanel') {
-        if (!isStaff(interaction.member)) {
-          await interaction.reply({
-            content: 'Only staff can post the ticket panel.',
-            ephemeral: true
-          });
-          return;
-        }
+      const commandFiles = {
+        ticketpanel: require('./commands/ticketpanel'),
+        close: require('./commands/close'),
+        calculate: require('./commands/calculate')
+      };
 
-        const panelChannel =
-          await client.channels.fetch(PANEL_CHANNEL_ID);
+      const command = commandFiles[interaction.commandName];
 
-        if (!panelChannel || !panelChannel.isTextBased()) {
-          await interaction.reply({
-            content: 'The configured panel channel could not be found.',
-            ephemeral: true
-          });
-          return;
-        }
-
-        await panelChannel.send(makePanel());
-
-        await interaction.reply({
-          content: 'Ticket panel posted in <#' + PANEL_CHANNEL_ID + '>.',
-          ephemeral: true
+      if (command) {
+        await command.execute(interaction, {
+          client,
+          PANEL_CHANNEL_ID,
+          isStaff,
+          makePanel,
+          showCloseConfirmation,
+          MOPS,
+          makeMopsPayload
         });
         return;
       }
 
-      if (interaction.commandName === 'close') {
-        await showCloseConfirmation(interaction);
-        return;
-      }
-
+      // /allmops remains in index.js for now.
       if (interaction.commandName === 'allmops') {
         if (!MOPS.length) {
           await interaction.reply({
             content:
-              'The MOP list has not been configured yet. Add your payment methods and instructions in the MOPS array in index.js.',
+              'the mop list has not been configured yet, we will add the methods and instructions soon',
             ephemeral: true
           });
           return;
         }
 
         await interaction.reply(makeMopsPayload(0));
-        return;
-      }
-
-      if (interaction.commandName === 'calculate') {
-        const amount = interaction.options.getNumber('amount', true);
-        const currency =
-          interaction.options.getString('currency') || 'EUR';
-
-        if (!Number.isFinite(amount) || amount <= 0) {
-          await interaction.reply({
-            content: 'Please enter an amount greater than zero.',
-            ephemeral: true
-          });
-          return;
-        }
-
-        // Work in cents to avoid common floating-point rounding errors.
-        const cents = Math.round(amount * 100);
-        const feeCents = Math.round(cents * FEE_PERCENT / 100);
-        const totalCents = cents + feeCents;
-        const symbol = currency === 'USD' ? '$' : '€';
-
-        const formatMoney = value =>
-          (value / 100).toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          });
-
-        await interaction.reply({
-          content:
-            '**CALCULATION**\n' +
-            'Amount: ' + symbol + formatMoney(cents) + '\n' +
-            'Fee (' + FEE_PERCENT + '%): ' +
-            symbol + formatMoney(feeCents) + '\n' +
-            '**Total: ' + symbol + formatMoney(totalCents) + '**'
-        });
         return;
       }
     }
@@ -963,7 +889,7 @@ client.on('interactionCreate', async interaction => {
 
         if (!ticket || ticket.ticket_type !== 'ORD') {
           await interaction.reply({
-            content: 'This is not an open ordering ticket.',
+            content: 'this is not an open ordering ticket',
             ephemeral: true
           });
           return;
@@ -972,17 +898,17 @@ client.on('interactionCreate', async interaction => {
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId('order_form')
-            .setLabel('Order')
+            .setLabel('order')
             .setStyle(ButtonStyle.Secondary),
 
           new ButtonBuilder()
             .setCustomId('warranty_form')
-            .setLabel('Warranty')
+            .setLabel('warranty')
             .setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.reply({
-          content: 'Choose which form you want to fill out.',
+          content: 'choose which form you want to fill out please',
           components: [row],
           ephemeral: true
         });
@@ -997,7 +923,7 @@ client.on('interactionCreate', async interaction => {
 
         if (!ticket || ticket.ticket_type !== 'ORD') {
           await interaction.reply({
-            content: 'These forms are only available inside an open ordering ticket.',
+            content: 'these forms are only available inside a ticket',
             ephemeral: true
           });
           return;
@@ -1026,7 +952,7 @@ client.on('interactionCreate', async interaction => {
 
         if (channelId !== interaction.channelId) {
           await interaction.reply({
-            content: 'This confirmation belongs to a different channel.',
+            content: 'this confirmation belongs to a different channel',
             ephemeral: true
           });
           return;
@@ -1035,8 +961,8 @@ client.on('interactionCreate', async interaction => {
         await interaction.update({
           embeds: [
             confirmationEmbed(
-              'Cancelled',
-              'The ticket will remain open.'
+              'cancelled',
+              'the ticket will remain open'
             )
           ],
           components: []
@@ -1050,7 +976,7 @@ client.on('interactionCreate', async interaction => {
 
         if (channelId !== interaction.channelId) {
           await interaction.reply({
-            content: 'This confirmation belongs to a different channel.',
+            content: 'this confirmation belongs to a different channel',
             ephemeral: true
           });
           return;
@@ -1060,7 +986,7 @@ client.on('interactionCreate', async interaction => {
 
         if (!ticket) {
           await interaction.update({
-            content: 'This ticket is already closed.',
+            content: 'this ticket is already closed.',
             embeds: [],
             components: []
           });
@@ -1072,7 +998,7 @@ client.on('interactionCreate', async interaction => {
           !isStaff(interaction.member)
         ) {
           await interaction.reply({
-            content: 'Only the opener or staff can confirm cancellation.',
+            content: 'only the opener or staff can confirm cancellation',
             ephemeral: true
           });
           return;
@@ -1081,8 +1007,8 @@ client.on('interactionCreate', async interaction => {
         await interaction.update({
           embeds: [
             confirmationEmbed(
-              'Saving transcript…',
-              'Please wait while the transcript is sent.'
+              'saving transcript…',
+              'please wait while the transcript is being sent'
             )
           ],
           components: []
@@ -1107,7 +1033,7 @@ client.on('interactionCreate', async interaction => {
           try {
             await interaction.followUp({
               content:
-                'I could not finish cancelling this ticket because the transcript failed. The ticket should remain open. Error: ' +
+                'could not finish cancelling this ticket because the transcript failed, the ticket should remain open Error: ' +
                 String(error.message || error).slice(0, 200),
               ephemeral: true
             });
@@ -1123,7 +1049,7 @@ client.on('interactionCreate', async interaction => {
 
         if (channelId !== interaction.channelId) {
           await interaction.reply({
-            content: 'This confirmation belongs to a different channel.',
+            content: 'this confirmation belongs to a different channel',
             ephemeral: true
           });
           return;
@@ -1131,7 +1057,7 @@ client.on('interactionCreate', async interaction => {
 
         if (!isStaff(interaction.member)) {
           await interaction.reply({
-            content: 'Only staff can confirm closing tickets.',
+            content: 'only staff can confirm closing tickets',
             ephemeral: true
           });
           return;
@@ -1141,7 +1067,7 @@ client.on('interactionCreate', async interaction => {
 
         if (!ticket) {
           await interaction.update({
-            content: 'This ticket is already closed.',
+            content: 'this ticket is already closed',
             embeds: [],
             components: []
           });
@@ -1151,8 +1077,8 @@ client.on('interactionCreate', async interaction => {
         await interaction.update({
           embeds: [
             confirmationEmbed(
-              'Saving transcript…',
-              'Please wait while the transcript is sent.'
+              'saving transcript…',
+              'please wait while the transcript is being sent'
             )
           ],
           components: []
@@ -1161,12 +1087,12 @@ client.on('interactionCreate', async interaction => {
         try {
           await finishTicket(interaction.channel, ticket, true);
         } catch (error) {
-          console.error('Ticket close failed:', error);
+          console.error('ticket close failed:', error);
 
           try {
             await interaction.followUp({
               content:
-                'I could not finish closing this ticket because the transcript failed. Error: ' +
+                'could not finish closing this ticket because the transcript failed Error: ' +
                 String(error.message || error).slice(0, 200),
               ephemeral: true
             });
@@ -1183,7 +1109,7 @@ client.on('interactionCreate', async interaction => {
 
         if (!mop) {
           await interaction.reply({
-            content: 'That MOP could not be found.',
+            content: 'invalid mop',
             ephemeral: true
           });
           return;
@@ -1200,7 +1126,7 @@ client.on('interactionCreate', async interaction => {
       if (interaction.customId.startsWith('mop_page:')) {
         if (!MOPS.length) {
           await interaction.reply({
-            content: 'No MOPs are configured yet.',
+            content: 'no mops are configured yet',
             ephemeral: true
           });
           return;
@@ -1219,7 +1145,7 @@ client.on('interactionCreate', async interaction => {
 
       if (!ticket || ticket.ticket_type !== 'ORD') {
         await interaction.reply({
-          content: 'This form can only be submitted inside an open ordering ticket.',
+          content: 'this form can only be submitted inside a ticket',
           ephemeral: true
         });
         return;
@@ -1227,17 +1153,17 @@ client.on('interactionCreate', async interaction => {
 
       if (interaction.customId === 'form_order') {
         const answers = [
-          ['Item', interaction.fields.getTextInputValue('item')],
-          ['Amount', interaction.fields.getTextInputValue('amount')],
-          ['MOP', interaction.fields.getTextInputValue('mop')],
-          ['Tip', interaction.fields.getTextInputValue('tip') || 'Not provided'],
-          ['Info', interaction.fields.getTextInputValue('info') || 'Not provided']
+          ['item', interaction.fields.getTextInputValue('item')],
+          ['amount', interaction.fields.getTextInputValue('amount')],
+          ['mop', interaction.fields.getTextInputValue('mop')],
+          ['tip', interaction.fields.getTextInputValue('tip') || 'Not provided'],
+          ['info', interaction.fields.getTextInputValue('info') || 'Not provided']
         ];
 
         await interaction.channel.send({
           content:
-            '**ORDER FORM**\n' +
-            'Submitted by <@' + interaction.user.id + '>\n' +
+            '**order form**\n' +
+            'submitted by <@' + interaction.user.id + '>\n' +
             answers
               .map(answer => '**' + answer[0] + ':** ' + answer[1])
               .join('\n'),
@@ -1245,7 +1171,7 @@ client.on('interactionCreate', async interaction => {
         });
 
         await interaction.reply({
-          content: 'Your order form has been posted in this ticket.',
+          content: 'your order form is sent, please be patient',
           ephemeral: true
         });
         return;
@@ -1253,15 +1179,15 @@ client.on('interactionCreate', async interaction => {
 
       if (interaction.customId === 'form_warranty') {
         const answers = [
-          ['Ticket ID', interaction.fields.getTextInputValue('ticket_id')],
-          ['Item', interaction.fields.getTextInputValue('item')],
-          ['Issue', interaction.fields.getTextInputValue('issue')]
+          ['ticket id', interaction.fields.getTextInputValue('ticket_id')],
+          ['item', interaction.fields.getTextInputValue('item')],
+          ['issue', interaction.fields.getTextInputValue('issue')]
         ];
 
         await interaction.channel.send({
           content:
-            '**WARRANTY FORM**\n' +
-            'Submitted by <@' + interaction.user.id + '>\n' +
+            '**warranty form**\n' +
+            'submitted by <@' + interaction.user.id + '>\n' +
             answers
               .map(answer => '**' + answer[0] + ':** ' + answer[1])
               .join('\n'),
@@ -1269,7 +1195,7 @@ client.on('interactionCreate', async interaction => {
         });
 
         await interaction.reply({
-          content: 'Your warranty form has been posted in this ticket.',
+          content: 'your warranty form has been sent, please be patient',
           ephemeral: true
         });
       }
@@ -1284,7 +1210,7 @@ client.on('interactionCreate', async interaction => {
     ) {
       try {
         await interaction.reply({
-          content: 'Something went wrong. Please try again or tell staff.',
+          content: 'something went wrong, contact staff',
           ephemeral: true
         });
       } catch (_) {}
@@ -1327,7 +1253,7 @@ client.on('channelUpdate', async (oldChannel, newChannel) => {
     if (newName !== newChannel.name) {
       await newChannel.setName(
         newName,
-        'Keep ticket ID in the channel name'
+        'keep ticket id in the channel name'
       );
     }
 
@@ -1336,7 +1262,7 @@ client.on('channelUpdate', async (oldChannel, newChannel) => {
     });
   } catch (error) {
     console.warn(
-      'Could not preserve ticket ID after rename:',
+      'could not preserve ticket id after rename:',
       error.message
     );
   }
