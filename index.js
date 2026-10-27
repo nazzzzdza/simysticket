@@ -365,7 +365,7 @@ async function createTicket(interaction, type) {
         content:
           '<@' + user.id + '>\n\n' +
           '⠀⠀⠀⠀✿⠀ ―⠀ __n__e**w**⠀⠀–⠀⠀**or**d__er__！\n' +
-          '⠀⠀⠀⠀⠀ ୭⠀⠀__p__le**as**e⠀⠀ch**oos**e⠀◞'\n\n,
+          '⠀⠀⠀⠀⠀ ୭⠀⠀__p__le**as**e⠀⠀ch**oos**e⠀◞\n\n',
 
         components: [buttons],
         allowedMentions: { users: [user.id] }
