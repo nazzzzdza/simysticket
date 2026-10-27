@@ -4,12 +4,12 @@ const { SlashCommandBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ticketpanel')
-    .setDescription('post panel.'),
+    .setDescription('post panel'),
 
   async execute(interaction, context) {
     if (!context.isStaff(interaction.member)) {
       return interaction.reply({
-        content: 'only staff command',
+        content: 'only staff can use this command',
         ephemeral: true
       });
     }
