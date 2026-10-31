@@ -9,7 +9,6 @@ const {
   ActivityType,
   ChannelType,
   PermissionFlagsBits,
-  SlashCommandBuilder,
   REST,
   Routes,
   ActionRowBuilder,
@@ -33,6 +32,13 @@ const {
   SUPABASE_SERVICE_ROLE_KEY
 } = process.env;
 
+// ==================== COMMAND FILES ====================
+
+const ticketpanelCommand = require('./commands/ticketpanel');
+const closeCommand = require('./commands/close');
+const calculateCommand = require('./commands/calculate');
+const allmopsCommand = require('./commands/allmops');
+
 // ==================== CONFIGURATION ====================
 
 const PANEL_CHANNEL_ID = '1557032953362784397';
@@ -42,11 +48,6 @@ const TRANSCRIPT_CHANNEL_ID = '1529196050450087966';
 const STAFF_ROLE_ID = '1055309415806406766';
 
 const CONFIRM_COLOR = 0x8b5cf6;
-
-// /allmops stays here until its updated version is ready.
-const MOPS = [
-  // Add the MOP details here later.
-];
 
 // ==================== ENVIRONMENT ====================
 
@@ -212,17 +213,11 @@ async function updateTicketRow(channelId, updates) {
 // ==================== SLASH COMMAND REGISTRATION ====================
 
 async function registerCommands() {
-  const ticketpanelCommand = require('./commands/ticketpanel');
-  const closeCommand = require('./commands/close');
-  const calculateCommand = require('./commands/calculate');
-
   const commands = [
     ticketpanelCommand.data,
     closeCommand.data,
-    new SlashCommandBuilder()
-      .setName('allmops')
-      .setDescription('view available mops'),
-    calculateCommand.data
+    calculateCommand.data,
+    allmopsCommand.data
   ].map(command => command.toJSON());
 
   const rest = new REST({ version: '10' })
@@ -716,59 +711,6 @@ async function showCloseConfirmation(interaction) {
   });
 }
 
-// ==================== ALL MOPS ====================
-
-function makeMopsPayload(page) {
-  const pageSize = 5;
-  const pageCount = Math.ceil(MOPS.length / pageSize);
-  const safePage = Math.max(0, Math.min(page, pageCount - 1));
-  const start = safePage * pageSize;
-  const current = MOPS.slice(start, start + pageSize);
-
-  const buttons = current.map((mop, index) =>
-    new ButtonBuilder()
-      .setCustomId('mop_info:' + (start + index))
-      .setLabel(mop.name.slice(0, 80))
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  const rows = [];
-
-  for (let i = 0; i < buttons.length; i += 5) {
-    rows.push(
-      new ActionRowBuilder().addComponents(
-        buttons.slice(i, i + 5)
-      )
-    );
-  }
-
-  if (pageCount > 1) {
-    rows.push(
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('mop_page:' + (safePage - 1))
-          .setLabel('previous')
-          .setStyle(ButtonStyle.Secondary)
-          .setDisabled(safePage === 0),
-
-        new ButtonBuilder()
-          .setCustomId('mop_page:' + (safePage + 1))
-          .setLabel('next')
-          .setStyle(ButtonStyle.Secondary)
-          .setDisabled(safePage === pageCount - 1)
-      )
-    );
-  }
-
-  return {
-    content:
-      '✿ **available mops**\n' +
-      'choose a method below to see its instructions.\n' +
-      'Page ' + (safePage + 1) + ' of ' + pageCount + '.',
-    components: rows
-  };
-}
-
 // ==================== BOT STARTUP ====================
 
 client.once('ready', async () => {
@@ -827,12 +769,13 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async interaction => {
   try {
-    // Commands that have their own files.
+    // Slash commands
     if (interaction.isChatInputCommand()) {
       const commandFiles = {
-        ticketpanel: require('./commands/ticketpanel'),
-        close: require('./commands/close'),
-        calculate: require('./commands/calculate')
+        ticketpanel: ticketpanelCommand,
+        close: closeCommand,
+        calculate: calculateCommand,
+        allmops: allmopsCommand
       };
 
       const command = commandFiles[interaction.commandName];
@@ -843,25 +786,8 @@ client.on('interactionCreate', async interaction => {
           PANEL_CHANNEL_ID,
           isStaff,
           makePanel,
-          showCloseConfirmation,
-          MOPS,
-          makeMopsPayload
+          showCloseConfirmation
         });
-        return;
-      }
-
-      // /allmops remains in index.js for now.
-      if (interaction.commandName === 'allmops') {
-        if (!MOPS.length) {
-          await interaction.reply({
-            content:
-              'the mop list has not been configured yet, we will add the methods and instructions soon',
-            ephemeral: true
-          });
-          return;
-        }
-
-        await interaction.reply(makeMopsPayload(0));
         return;
       }
     }
@@ -882,6 +808,13 @@ client.on('interactionCreate', async interaction => {
 
     // Buttons
     if (interaction.isButton()) {
+
+      // Allmops buttons are handled by commands/allmops.js
+      if (interaction.customId.startsWith('mop_info:')) {
+        await allmopsCommand.handleButton(interaction);
+        return;
+      }
+
       if (interaction.customId === 'order_continue') {
         const ticket = await getTicketForChannel(interaction.channelId);
 
@@ -1097,42 +1030,6 @@ client.on('interactionCreate', async interaction => {
           } catch (_) {}
         }
 
-        return;
-      }
-
-      // MOP instructions are visible only to the person who clicks.
-      if (interaction.customId.startsWith('mop_info:')) {
-        const index = Number(interaction.customId.split(':')[1]);
-        const mop = MOPS[index];
-
-        if (!mop) {
-          await interaction.reply({
-            content: 'invalid mop',
-            ephemeral: true
-          });
-          return;
-        }
-
-        await interaction.reply({
-          content: '**' + mop.name + '**\n' + mop.instructions,
-          ephemeral: true
-        });
-        return;
-      }
-
-      // Update the existing public MOP panel when changing pages.
-      if (interaction.customId.startsWith('mop_page:')) {
-        if (!MOPS.length) {
-          await interaction.reply({
-            content: 'no mops are configured yet',
-            ephemeral: true
-          });
-          return;
-        }
-
-        const page = Number(interaction.customId.split(':')[1]);
-
-        await interaction.update(makeMopsPayload(page));
         return;
       }
     }
