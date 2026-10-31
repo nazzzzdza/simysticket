@@ -72,25 +72,33 @@ _ _`
   }
 ];
 
-function makeMopsPanel() {
-  const embed = new EmbedBuilder()
-    .setDescription(
-      '✿ **available mops**\n' +
-      'choose a method below to see its instructions'
-    );
+function makePage(page) {
+  const mop = MOPS[page];
 
-  const buttons = MOPS.map((mop, index) =>
+  const embed = new EmbedBuilder()
+    .setTitle(mop.name)
+    .setDescription(mop.instructions)
+    .setFooter({
+      text: `page ${page + 1} / ${MOPS.length}`
+    });
+
+  const buttons = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('mop_info:' + index)
-      .setLabel(mop.name)
+      .setCustomId('allmops_previous')
+      .setLabel('previous')
       .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page === 0),
+
+    new ButtonBuilder()
+      .setCustomId('allmops_next')
+      .setLabel('next')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page === MOPS.length - 1)
   );
 
   return {
     embeds: [embed],
-    components: [
-      new ActionRowBuilder().addComponents(buttons)
-    ]
+    components: [buttons]
   };
 }
 
@@ -100,31 +108,44 @@ module.exports = {
     .setDescription('view all available mops'),
 
   async execute(interaction) {
-    await interaction.reply(makeMopsPanel());
-  },
+    await interaction.reply(makePage(0));
 
-  async handleButton(interaction) {
-    if (!interaction.customId.startsWith('mop_info:')) {
-      return false;
-    }
+    const message = await interaction.fetchReply();
 
-    const index = Number(interaction.customId.split(':')[1]);
-    const mop = MOPS[index];
+    let currentPage = 0;
 
-    if (!mop) {
-      await interaction.reply({
-        content: 'invalid payment method.',
-        ephemeral: true
-      });
-
-      return true;
-    }
-
-    await interaction.reply({
-      content: '**' + mop.name + '**\n' + mop.instructions,
-      ephemeral: true
+    const collector = message.createMessageComponentCollector({
+      time: 15 * 60 * 1000
     });
 
-    return true;
+    collector.on('collect', async buttonInteraction => {
+      if (
+        buttonInteraction.customId !== 'allmops_previous' &&
+        buttonInteraction.customId !== 'allmops_next'
+      ) {
+        return;
+      }
+
+      if (buttonInteraction.customId === 'allmops_previous') {
+        currentPage = Math.max(0, currentPage - 1);
+      }
+
+      if (buttonInteraction.customId === 'allmops_next') {
+        currentPage = Math.min(
+          MOPS.length - 1,
+          currentPage + 1
+        );
+      }
+
+      await buttonInteraction.update(makePage(currentPage));
+    });
+
+    collector.on('end', async () => {
+      try {
+        await message.edit({
+          components: []
+        });
+      } catch (_) {}
+    });
   }
 };
