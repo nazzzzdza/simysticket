@@ -20,6 +20,12 @@ const MOPS = {
     symbol: '€',
     feePercent: 7
   },
+  cashapp: {
+    name: 'ca',
+    currency: 'usd',
+    symbol: '$',
+    feePercent: 10
+  },
   robux: {
     name: 'robux',
     currency: 'usd',
@@ -27,8 +33,6 @@ const MOPS = {
     feePercent: 0
   }
 };
-
-const FEE_COLOR = 0x8b5cf6;
 
 function formatMoney(cents, symbol) {
   return symbol + (cents / 100).toLocaleString('en-US', {
@@ -40,23 +44,24 @@ function formatMoney(cents, symbol) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('calculate')
-    .setDescription('calculate total price')
+    .setDescription('calculate prices')
     .addStringOption(option =>
       option
         .setName('mop')
-        .setDescription('choose your mop')
+        .setDescription('choose the payment method')
         .setRequired(true)
         .addChoices(
           { name: 'pp usd', value: 'paypal_usd' },
           { name: 'pp eur', value: 'paypal_eur' },
           { name: 'apple pay', value: 'apple_pay' },
+          { name: 'ca', value: 'cashapp' },
           { name: 'robux', value: 'robux' }
         )
     )
     .addNumberOption(option =>
       option
         .setName('amount')
-        .setDescription('amount you are spending')
+        .setDescription('amount, use usd value for rbx')
         .setRequired(true)
         .setMinValue(0.01)
     ),
@@ -68,36 +73,65 @@ module.exports = {
 
     if (!mop || !Number.isFinite(amount) || amount <= 0) {
       return interaction.reply({
-        content: 'select valid mop & amount above 0',
+        content: 'select a valid payment method and an amount above zero',
         ephemeral: true
       });
     }
 
     const embed = new EmbedBuilder()
-      .setColor(FEE_COLOR)
-      .setTitle('calculated price')
-      .addFields(
-        { name: 'mop you choose', value: mop.name, inline: true }
-      );
+      .setTitle('price calculation')
+      .addFields({
+        name: 'mop',
+        value: mop.name,
+        inline: true
+      });
 
     if (mopKey === 'robux') {
       const robux = Math.round(amount * 250);
 
       embed.addFields(
-        { name: 'amount', value: formatMoney(Math.round(amount * 100), '$'), inline: true },
-        { name: 'conversion rate', value: '$1 = 250 Robux', inline: true },
-        { name: 'total', value: `**${robux.toLocaleString('en-US')} Robux**` }
+        {
+          name: 'usd amount',
+          value: formatMoney(Math.round(amount * 100), '$'),
+          inline: true
+        },
+        {
+          name: 'conversion rate',
+          value: '$1 = 250 Robux',
+          inline: true
+        },
+        {
+          name: 'total',
+          value: `**${robux.toLocaleString('en-US')} Robux**`
+        }
       );
     } else {
       const amountCents = Math.round(amount * 100);
-      const feeCents = Math.round(amountCents * mop.feePercent / 100);
+      const feeCents = Math.round(
+        amountCents * mop.feePercent / 100
+      );
       const totalCents = amountCents + feeCents;
 
       embed.addFields(
-        { name: 'currency', value: mop.currency, inline: true },
-        { name: 'amount', value: formatMoney(amountCents, mop.symbol), inline: true },
-        { name: `fee (${mop.feePercent}%)`, value: formatMoney(feeCents, mop.symbol), inline: true },
-        { name: 'total price', value: `**${formatMoney(totalCents, mop.symbol)}**` }
+        {
+          name: 'currency',
+          value: mop.currency,
+          inline: true
+        },
+        {
+          name: 'amount',
+          value: formatMoney(amountCents, mop.symbol),
+          inline: true
+        },
+        {
+          name: `holder & exch fee (${mop.feePercent}%)`,
+          value: formatMoney(feeCents, mop.symbol),
+          inline: true
+        },
+        {
+          name: 'total',
+          value: `**${formatMoney(totalCents, mop.symbol)}**`
+        }
       );
     }
 
